@@ -67,11 +67,24 @@ class AttendanceFiller {
   async fillDay(dayLabel) {
     console.log(`\n-> ${dayLabel}`);
 
-    const dayRow = this.page.locator('tr')
-      .filter({ hasText: new RegExp(`\\b${dayLabel}\\b`) })
-      .filter({ has: this.page.locator('button[data-intercom-target="attendance-row-toggle"]') });
+    const btnIndex = await this.page.evaluate((label) => {
+      const rows = Array.from(document.querySelectorAll('tr'));
+      let idx = 0;
+      for (const row of rows) {
+        const btn = row.querySelector('button[data-intercom-target="attendance-row-toggle"]');
+        if (!btn) continue;
+        if (row.textContent.includes(label)) return idx;
+        idx++;
+      }
+      return -1;
+    }, dayLabel);
 
-    const toggleBtn = dayRow.locator('button[data-intercom-target="attendance-row-toggle"]').first();
+    if (btnIndex === -1) {
+      console.log(`  Row not found for "${dayLabel}", skipping.`);
+      return;
+    }
+
+    const toggleBtn = this.page.locator('button[data-intercom-target="attendance-row-toggle"]').nth(btnIndex);
 
     await toggleBtn.scrollIntoViewIfNeeded();
     await toggleBtn.click();
@@ -99,7 +112,7 @@ class AttendanceFiller {
     await addBtn.click();
     await this.page.waitForTimeout(1500);
 
-    const inputs = this.page.locator('input._14l8ais0');
+    const inputs = this.page.locator('input[type="time"], input._14l8ais0');
     for (let attempt = 1; attempt <= 3; attempt++) {
       const count = await inputs.count();
       if (count >= 2) break;
@@ -113,12 +126,12 @@ class AttendanceFiller {
     const inputEnd = inputs.nth(count - 1);
 
     await inputStart.click({ force: true });
-    await inputStart.fill(start);
+    await inputStart.pressSequentially(start, { delay: 50 });
     await this.page.keyboard.press('Tab');
     await this.page.waitForTimeout(400);
 
     await inputEnd.click({ force: true });
-    await inputEnd.fill(end);
+    await inputEnd.pressSequentially(end, { delay: 50 });
     await this.page.keyboard.press('Tab');
     await this.page.waitForTimeout(400);
 
