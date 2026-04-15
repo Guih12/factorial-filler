@@ -1,5 +1,8 @@
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const path = require('path');
+
+chromium.use(StealthPlugin());
 
 const SESSION_DIR = path.join(__dirname, 'session');
 
@@ -14,6 +17,9 @@ class AttendanceFiller {
   async launch() {
     this.browser = await chromium.launchPersistentContext(SESSION_DIR, {
       headless: false,
+      args: [
+        '--disable-blink-features=AutomationControlled',
+      ],
     });
     this.page = this.browser.pages()[0] || await this.browser.newPage();
   }
@@ -94,10 +100,27 @@ class AttendanceFiller {
     await this.addShift('08:00', '12:00');
     console.log('  08:00 - 12:00 done');
 
+    // After applying, the row may collapse — re-expand it before adding the second shift
+    await this.page.waitForTimeout(1000);
+    const addBtnVisible = await this.page
+      .locator('button[data-intercom-target="attendance-row-add-shift-button"]')
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (!addBtnVisible) {
+      console.log('  Row collapsed, re-expanding...');
+      await toggleBtn.scrollIntoViewIfNeeded();
+      await toggleBtn.click();
+      await this.page.waitForTimeout(1200);
+    }
+
     console.log('  13:00 - 17:00...');
     await this.addShift('13:00', '17:00');
     console.log('  13:00 - 17:00 done');
 
+    // Collapse the row
+    await this.page.waitForTimeout(500);
     await toggleBtn.scrollIntoViewIfNeeded();
     await toggleBtn.click();
     await this.page.waitForTimeout(800);
@@ -125,14 +148,14 @@ class AttendanceFiller {
     const inputStart = inputs.nth(count - 2);
     const inputEnd = inputs.nth(count - 1);
 
-    await inputStart.click({ force: true });
-    await inputStart.pressSequentially(start, { delay: 50 });
-    await this.page.keyboard.press('Tab');
+    await inputStart.fill(start);
+    await this.page.waitForTimeout(300);
+    await inputStart.dispatchEvent('change');
     await this.page.waitForTimeout(400);
 
-    await inputEnd.click({ force: true });
-    await inputEnd.pressSequentially(end, { delay: 50 });
-    await this.page.keyboard.press('Tab');
+    await inputEnd.fill(end);
+    await this.page.waitForTimeout(300);
+    await inputEnd.dispatchEvent('change');
     await this.page.waitForTimeout(400);
 
     await this.setLocationRemote();

@@ -4,8 +4,11 @@
  * A sessão é salva em ./session e reutilizada pelo ponto.js.
  */
 
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const path = require('path');
+
+chromium.use(StealthPlugin());
 
 const SESSION_DIR = path.join(__dirname, 'session');
 
@@ -16,6 +19,9 @@ const SESSION_DIR = path.join(__dirname, 'session');
 
   const browser = await chromium.launchPersistentContext(SESSION_DIR, {
     headless: false,
+    args: [
+      '--disable-blink-features=AutomationControlled',
+    ],
   });
 
   const page = browser.pages()[0] || await browser.newPage();
