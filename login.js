@@ -4,28 +4,16 @@
  * A sessão é salva em ./session e reutilizada pelo ponto.js.
  */
 
-const { chromium } = require('playwright-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const path = require('path');
-
-chromium.use(StealthPlugin());
-
-const SESSION_DIR = path.join(__dirname, 'session');
+const { APP_URL, createBrowser, getPage } = require('./browser');
 
 (async () => {
   console.log('Abrindo browser para login...');
   console.log('Faça login com sua conta Google e aguarde redirecionar para o Factorial.');
   console.log('Quando estiver na tela principal do Factorial, pressione ENTER aqui.\n');
 
-  const browser = await chromium.launchPersistentContext(SESSION_DIR, {
-    headless: false,
-    args: [
-      '--disable-blink-features=AutomationControlled',
-    ],
-  });
-
-  const page = browser.pages()[0] || await browser.newPage();
-  await page.goto('https://app.factorialhr.com/?locale=pt-BR');
+  const browser = await createBrowser(false);
+  const page = await getPage(browser);
+  await page.goto(`${APP_URL}/?locale=pt-BR`);
 
   // Aguarda o usuário fazer login e pressionar ENTER
   await new Promise((resolve) => {

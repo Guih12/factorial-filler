@@ -1,36 +1,23 @@
-const { chromium } = require('playwright-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const path = require('path');
-
-chromium.use(StealthPlugin());
-
-const SESSION_DIR = path.join(__dirname, 'session');
+const { APP_URL, createBrowser, getPage, assertSession } = require('./browser');
 
 class AttendanceFiller {
   constructor() {
     const now = new Date();
-    this.url = `https://app.factorialhr.com/attendance/clock-in/monthly/${now.getFullYear()}/${now.getMonth() + 1}/1`;
+    this.url = `${APP_URL}/attendance/clock-in/monthly/${now.getFullYear()}/${now.getMonth() + 1}/1`;
     this.browser = null;
     this.page = null;
   }
 
   async launch() {
-    this.browser = await chromium.launchPersistentContext(SESSION_DIR, {
-      headless: false,
-      args: [
-        '--disable-blink-features=AutomationControlled',
-      ],
-    });
-    this.page = this.browser.pages()[0] || await this.browser.newPage();
+    this.browser = await createBrowser(false);
+    this.page = await getPage(this.browser);
   }
 
   async navigate() {
     console.log('Loading attendance page...');
     await this.page.goto(this.url, { waitUntil: 'networkidle', timeout: 30000 });
 
-    if (this.page.url().includes('login') || this.page.url().includes('accounts.google')) {
-      throw new Error('Session expired. Run: npm run login');
-    }
+    assertSession(this.page);
 
     await this.selectCompanyIfNeeded();
 
@@ -194,22 +181,26 @@ class AttendanceFiller {
 
   async run() {
     await this.launch();
-    await this.navigate();
+    try {
+      await this.navigate();
 
-    const days = await this.findOpenDays();
+      const days = await this.findOpenDays();
 
-    if (days.length === 0) {
-      console.log('No open days found. All good!');
-      return;
+      if (days.length === 0) {
+        console.log('No open days found. All good!');
+        return;
+      }
+
+      console.log(`Days to fill: ${days.join(', ')}`);
+
+      for (const day of days) {
+        await this.fillDay(day);
+      }
+
+      console.log('\nDone!');
+    } finally {
+      await this.close();
     }
-
-    console.log(`Days to fill: ${days.join(', ')}`);
-
-    for (const day of days) {
-      await this.fillDay(day);
-    }
-
-    console.log('\nDone!');
   }
 }
 

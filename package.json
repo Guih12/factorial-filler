@@ -4,7 +4,8 @@
   "description": "Automação de ponto no Factorial RH",
   "scripts": {
     "login": "node login.js",
-    "ponto": "node ponto.js"
+    "ponto": "node ponto.js",
+    "ponto:api": "node preencher-api.js"
   },
   "dependencies": {
     "playwright": "^1.43.0",

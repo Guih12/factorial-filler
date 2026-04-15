@@ -1,10 +1,11 @@
 /**
- * preencher.js — Fills open days with 08:00-12:00 and 13:00-17:00 shifts.
+ * preencher-api.js — Fills open days via Factorial API (no browser UI needed).
+ * Uses session cookies from ./session (run `npm run login` first).
  */
 
 const fs = require('fs');
 const path = require('path');
-const AttendanceFiller = require('./AttendanceFiller');
+const AttendanceFillerAPI = require('./AttendanceFillerAPI');
 
 const SESSION_DIR = path.join(__dirname, 'session');
 
@@ -14,6 +15,6 @@ if (!fs.existsSync(SESSION_DIR)) {
 }
 
 (async () => {
-  const filler = new AttendanceFiller();
+  const filler = new AttendanceFillerAPI();
   await filler.run();
 })();
